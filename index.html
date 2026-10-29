@@ -70,20 +70,19 @@
 
     try {
       const firebaseConfig = {
-        databaseURL: https://booking-2e6e2-default-rtdb.firebaseio.com/
+        databaseURL: "https://booking-shortflim-default-rtdb.firebaseio.com/"
       };
       if (!firebase.apps.length) {
         firebase.initializeApp(firebaseConfig);
       }
       db = firebase.database();
 
-      // Realtime listener: Oka phone lo change ayina, anni phones lo instantly update avuthundhi
       db.ref('bookings').on('value', (snapshot) => {
         bookings = snapshot.val() || {};
         renderGrid();
       });
     } catch (err) {
-      console.log("Firebase Connection Error:", err);
+      console.log("Database Connection Error:", err);
     }
 
     function renderGrid() {
@@ -139,7 +138,7 @@
       if (db) {
         db.ref('bookings/' + selectedSeat).set({ name, phone }, (error) => {
           if (error) {
-            alert("Database write error! Check Firebase Security Rules.");
+            alert("Database write error! Check Firebase Rules.");
           } else {
             alert("Seat Booked Successfully!");
             closeModal();
