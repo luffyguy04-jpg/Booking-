@@ -17,18 +17,21 @@
     .seat { width: 55px; height: 45px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: bold; cursor: pointer; transition: transform 0.1s, background 0.2s; user-select: none; }
     .seat:hover { transform: scale(1.05); }
     .seat.available { background: #f97316; color: #fff; }
-    .seat.k-row { background: #e02424; color: #fff; }
     .seat.booked { background: #475569; color: #94a3b8; border: 2px solid #ef4444; }
     .btn { padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; transition: opacity 0.2s; }
     .btn:hover { opacity: 0.9; }
     .btn-primary { background: #0284c7; color: white; }
-    .btn-success { background: #22c55e; color: white; }
     .btn-danger { background: #ef4444; color: white; }
+    .btn-success { background: #22c55e; color: white; }
     .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); justify-content: center; align-items: center; z-index: 100; }
     .modal.active { display: flex; }
     .modal-content { background: #1e293b; padding: 25px; border-radius: 10px; width: 90%; max-width: 400px; }
     input { width: 100%; padding: 10px; margin: 10px 0; border-radius: 6px; border: 1px solid #475569; background: #0f172a; color: white; }
   </style>
+
+  <!-- Firebase Scripts -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 </head>
 <body>
   <div class="container">
@@ -36,7 +39,7 @@
     <div class="status-bar">
       <div id="adminStatus">Role: Student (View & Book)</div>
       <div>
-        <button class="btn btn-primary" id="shareBtn" onclick="shareLink()">Share Link</button>
+        <button class="btn btn-primary" onclick="shareLink()">Share Link</button>
         <button class="btn btn-danger" id="adminBtn" onclick="toggleAdmin()">Admin Login</button>
       </div>
     </div>
@@ -58,10 +61,27 @@
   </div>
 
   <script>
+    // 1. మమ్మల్ని ఉచిత డేటాబేస్ లోకి కనెక్ట్ చేసే కాన్ఫిగరేషన్
+    const firebaseConfig = {
+      databaseURL: "https://seat-booking-default-rtdb.firebaseio.com"
+    };
+    
+    // Firebase ఇనిషియలైజ్ చేయడం
+    if (!firebase.apps.length) {
+      firebase.initializeApp(firebaseConfig);
+    }
+    const db = firebase.database();
+
     const ROWS = ['B','C','D','E','F','G','H','I','J'];
-    let bookings = JSON.parse(localStorage.getItem('seat_bookings') || '{}');
+    let bookings = {};
     let isAdmin = false;
     let selectedSeat = null;
+
+    // రియల్ టైమ్‌లో డేటా మార్పులను వినడం (అందరి మొబైల్స్‌లో వెంటనే అప్‌డేట్ అవుతుంది)
+    db.ref('bookings').on('value', (snapshot) => {
+      bookings = snapshot.val() || {};
+      renderGrid();
+    });
 
     function renderGrid() {
       const grid = document.getElementById('seatGrid');
@@ -112,17 +132,20 @@
       const name = document.getElementById('studentName').value.trim();
       const phone = document.getElementById('studentPhone').value.trim();
       if (!name) return alert("Please enter name");
-      bookings[selectedSeat] = { name, phone };
-      localStorage.setItem('seat_bookings', JSON.stringify(bookings));
-      closeModal();
-      renderGrid();
+
+      // లైవ్ డేటాబేస్‌కి పంపడం
+      db.ref('bookings/' + selectedSeat).set({ name, phone }, (error) => {
+        if (error) alert("Error saving booking");
+        else closeModal();
+      });
     }
 
     function deleteBooking() {
-      delete bookings[selectedSeat];
-      localStorage.setItem('seat_bookings', JSON.stringify(bookings));
-      closeModal();
-      renderGrid();
+      // లైవ్ డేటాబేస్ నుండి తొలగించడం
+      db.ref('bookings/' + selectedSeat).remove((error) => {
+        if (error) alert("Error deleting booking");
+        else closeModal();
+      });
     }
 
     function closeModal() {
@@ -145,13 +168,11 @@
 
     function shareLink() {
       navigator.clipboard.writeText(window.location.href).then(() => {
-        alert("Link copied to clipboard! You can send it to your students.");
+        alert("Link copied to clipboard!");
       }).catch(() => {
         prompt("Copy this link to share:", window.location.href);
       });
     }
-
-    renderGrid();
   </script>
 </body>
 </html>
