@@ -66,10 +66,8 @@
     let selectedSeat = null;
     let db = null;
 
-    // First render empty seat layout so seats show up immediately
     renderGrid();
 
-    // Initialize Firebase
     try {
       const firebaseConfig = {
         databaseURL: "https://seat-booking-default-rtdb.firebaseio.com"
@@ -79,13 +77,13 @@
       }
       db = firebase.database();
 
-      // Listen for real-time updates
+      // Realtime listener: Oka phone lo change ayina, anni phones lo instantly update avuthundhi
       db.ref('bookings').on('value', (snapshot) => {
         bookings = snapshot.val() || {};
         renderGrid();
       });
     } catch (err) {
-      console.log("Firebase error:", err);
+      console.log("Firebase Connection Error:", err);
     }
 
     function renderGrid() {
@@ -115,7 +113,7 @@
       const cancelBtn = document.getElementById('cancelBtn');
       if (bookings[id]) {
         if (!isAdmin) {
-          const pw = prompt("This seat is booked. Enter Admin Password to modify:");
+          const pw = prompt("This seat is already booked! Enter Admin Password to modify:");
           if (pw !== "karanpk") return alert("Incorrect Password!");
           isAdmin = true;
           document.getElementById('adminStatus').innerText = "Role: Admin (Unlocked)";
@@ -136,30 +134,30 @@
     function confirmBooking() {
       const name = document.getElementById('studentName').value.trim();
       const phone = document.getElementById('studentPhone').value.trim();
-      if (!name) return alert("Please enter name");
+      if (!name) return alert("Please enter student name");
 
       if (db) {
         db.ref('bookings/' + selectedSeat).set({ name, phone }, (error) => {
-          if (error) alert("Error saving booking");
-          else closeModal();
+          if (error) {
+            alert("Database write error! Check Firebase Security Rules.");
+          } else {
+            alert("Seat Booked Successfully!");
+            closeModal();
+          }
         });
-      } else {
-        bookings[selectedSeat] = { name, phone };
-        renderGrid();
-        closeModal();
       }
     }
 
     function deleteBooking() {
       if (db) {
         db.ref('bookings/' + selectedSeat).remove((error) => {
-          if (error) alert("Error deleting booking");
-          else closeModal();
+          if (error) {
+            alert("Error deleting seat booking.");
+          } else {
+            alert("Booking Cancelled!");
+            closeModal();
+          }
         });
-      } else {
-        delete bookings[selectedSeat];
-        renderGrid();
-        closeModal();
       }
     }
 
