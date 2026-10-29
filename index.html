@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Seat Booking Manager</title>
+  <style>
+    * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+    body { background: #0f172a; color: #f8fafc; margin: 0; padding: 20px; }
+    .container { max-width: 1000px; margin: 0 auto; background: #1e293b; padding: 25px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
+    h1 { text-align: center; color: #38bdf8; margin-bottom: 5px; }
+    .status-bar { display: flex; justify-content: space-between; align-items: center; background: #0f172a; padding: 12px 20px; border-radius: 8px; margin-bottom: 20px; flex-wrap: wrap; gap: 10px; }
+    .screen { background: linear-gradient(180deg, #38bdf8 0%, #0284c7 100%); color: #fff; text-align: center; padding: 8px; border-radius: 6px; font-weight: bold; letter-spacing: 2px; margin-bottom: 25px; box-shadow: 0 4px 15px rgba(56, 189, 248, 0.4); }
+    .grid { display: flex; flex-direction: column; gap: 8px; overflow-x: auto; padding-bottom: 15px; }
+    .row { display: flex; gap: 6px; justify-content: center; align-items: center; }
+    .row-label { width: 25px; font-weight: bold; text-align: center; color: #94a3b8; }
+    .seat { width: 55px; height: 45px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: bold; cursor: pointer; transition: transform 0.1s, background 0.2s; user-select: none; }
+    .seat:hover { transform: scale(1.05); }
+    .seat.available { background: #f97316; color: #fff; }
+    .seat.k-row { background: #e02424; color: #fff; }
+    .seat.booked { background: #475569; color: #94a3b8; border: 2px solid #ef4444; }
+    .btn { padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; transition: opacity 0.2s; }
+    .btn:hover { opacity: 0.9; }
+    .btn-primary { background: #0284c7; color: white; }
+    .btn-success { background: #22c55e; color: white; }
+    .btn-danger { background: #ef4444; color: white; }
+    .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); justify-content: center; align-items: center; z-index: 100; }
+    .modal.active { display: flex; }
+    .modal-content { background: #1e293b; padding: 25px; border-radius: 10px; width: 90%; max-width: 400px; }
+    input { width: 100%; padding: 10px; margin: 10px 0; border-radius: 6px; border: 1px solid #475569; background: #0f172a; color: white; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Seat Booking Manager</h1>
+    <div class="status-bar">
+      <div id="adminStatus">Role: Student (View & Book)</div>
+      <div>
+        <button class="btn btn-primary" id="shareBtn" onclick="shareLink()">Share Link</button>
+        <button class="btn btn-danger" id="adminBtn" onclick="toggleAdmin()">Admin Login</button>
+      </div>
+    </div>
+    <div class="screen">SCREEN / MOVIE STAGE</div>
+    <div class="grid" id="seatGrid"></div>
+  </div>
+
+  <div class="modal" id="bookingModal">
+    <div class="modal-content">
+      <h3 id="modalTitle">Book Seat</h3>
+      <input type="text" id="studentName" placeholder="Enter Full Name">
+      <input type="text" id="studentPhone" placeholder="Enter Phone / Student ID">
+      <div style="display:flex; gap:10px; margin-top:15px;">
+        <button class="btn btn-success" style="flex:1" onclick="confirmBooking()">Confirm</button>
+        <button class="btn btn-danger" id="cancelBtn" style="display:none; flex:1" onclick="deleteBooking()">Cancel Booking</button>
+        <button class="btn" style="background:#64748b; color:white;" onclick="closeModal()">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const ROWS = ['B','C','D','E','F','G','H','I','J'];
+    let bookings = JSON.parse(localStorage.getItem('seat_bookings') || '{}');
+    let isAdmin = false;
+    let selectedSeat = null;
+
+    function renderGrid() {
+      const grid = document.getElementById('seatGrid');
+      grid.innerHTML = '';
+      ROWS.forEach(r => {
+        const rowDiv = document.createElement('div');
+        rowDiv.className = 'row';
+        rowDiv.innerHTML = `<span class="row-label">${r}</span>`;
+        for (let i = 10; i >= 1; i--) {
+          const num = i < 10 ? '0' + i : i;
+          const id = r + num;
+          const isBooked = !!bookings[id];
+          const seat = document.createElement('div');
+          seat.className = `seat ${isBooked ? 'booked' : 'available'}`;
+          seat.innerText = isBooked ? bookings[id].name : id;
+          seat.onclick = () => handleSeatClick(id);
+          rowDiv.appendChild(seat);
+        }
+        grid.appendChild(rowDiv);
+      });
+    }
+
+    function handleSeatClick(id) {
+      selectedSeat = id;
+      const modal = document.getElementById('bookingModal');
+      const cancelBtn = document.getElementById('cancelBtn');
+      if (bookings[id]) {
+        if (!isAdmin) {
+          const pw = prompt("This seat is booked. Enter Admin Password to modify:");
+          if (pw !== "karanpk") return alert("Incorrect Password!");
+          isAdmin = true;
+          document.getElementById('adminStatus').innerText = "Role: Admin (Unlocked)";
+        }
+        document.getElementById('modalTitle').innerText = "Edit Seat " + id;
+        document.getElementById('studentName').value = bookings[id].name;
+        document.getElementById('studentPhone').value = bookings[id].phone || '';
+        cancelBtn.style.display = 'block';
+      } else {
+        document.getElementById('modalTitle').innerText = "Book Seat " + id;
+        document.getElementById('studentName').value = '';
+        document.getElementById('studentPhone').value = '';
+        cancelBtn.style.display = 'none';
+      }
+      modal.classList.add('active');
+    }
+
+    function confirmBooking() {
+      const name = document.getElementById('studentName').value.trim();
+      const phone = document.getElementById('studentPhone').value.trim();
+      if (!name) return alert("Please enter name");
+      bookings[selectedSeat] = { name, phone };
+      localStorage.setItem('seat_bookings', JSON.stringify(bookings));
+      closeModal();
+      renderGrid();
+    }
+
+    function deleteBooking() {
+      delete bookings[selectedSeat];
+      localStorage.setItem('seat_bookings', JSON.stringify(bookings));
+      closeModal();
+      renderGrid();
+    }
+
+    function closeModal() {
+      document.getElementById('bookingModal').classList.remove('active');
+    }
+
+    function toggleAdmin() {
+      if (isAdmin) {
+        isAdmin = false;
+        document.getElementById('adminStatus').innerText = "Role: Student (View & Book)";
+        alert("Logged out of Admin mode");
+      } else {
+        const pw = prompt("Enter Admin Password:");
+        if (pw === "karanpk") {
+          isAdmin = true;
+          document.getElementById('adminStatus').innerText = "Role: Admin (Unlocked)";
+        } else alert("Incorrect password!");
+      }
+    }
+
+    function shareLink() {
+      navigator.clipboard.writeText(window.location.href).then(() => {
+        alert("Link copied to clipboard! You can send it to your students.");
+      }).catch(() => {
+        prompt("Copy this link to share:", window.location.href);
+      });
+    }
+
+    renderGrid();
+  </script>
+</body>
+</html>
