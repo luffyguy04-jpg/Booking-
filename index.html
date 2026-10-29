@@ -60,18 +60,18 @@
   </div>
 
   <script>
-    const ROWS = const ROWS = ['B','C','D','E','F','G','H','I','J'];
-
+    const ROWS = ['B','C','D','E','F','G','H','I','J'];
     let bookings = {};
     let isAdmin = false;
     let selectedSeat = null;
     let db = null;
 
+    // Mundu ga grid render avvataniki 
     renderGrid();
 
     try {
       const firebaseConfig = {
-        databaseURL: "https://booking-shortflim-default-rtdb.firebaseio.com/"
+        databaseURL: "https://booking-shortfilm-default-rtdb.firebaseio.com"
       };
       if (!firebase.apps.length) {
         firebase.initializeApp(firebaseConfig);
@@ -81,13 +81,18 @@
       db.ref('bookings').on('value', (snapshot) => {
         bookings = snapshot.val() || {};
         renderGrid();
+      }, (error) => {
+        console.error("Firebase read failed: " + error.code);
+        renderGrid(); // Error vachina grid miss avvakunda undataniki
       });
     } catch (err) {
       console.log("Database Connection Error:", err);
+      renderGrid();
     }
 
     function renderGrid() {
       const grid = document.getElementById('seatGrid');
+      if (!grid) return;
       grid.innerHTML = '';
       ROWS.forEach(r => {
         const rowDiv = document.createElement('div');
