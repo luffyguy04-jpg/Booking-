@@ -29,7 +29,6 @@
     input { width: 100%; padding: 10px; margin: 10px 0; border-radius: 6px; border: 1px solid #475569; background: #0f172a; color: white; }
   </style>
 
-  <!-- Firebase Scripts -->
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 </head>
@@ -61,27 +60,33 @@
   </div>
 
   <script>
-    // 1. మమ్మల్ని ఉచిత డేటాబేస్ లోకి కనెక్ట్ చేసే కాన్ఫిగరేషన్
-    const firebaseConfig = {
-      databaseURL: "https://seat-booking-default-rtdb.firebaseio.com"
-    };
-    
-    // Firebase ఇనిషియలైజ్ చేయడం
-    if (!firebase.apps.length) {
-      firebase.initializeApp(firebaseConfig);
-    }
-    const db = firebase.database();
-
-    const ROWS = ['B','C','D','E','F','G','H','I','J'];
+    const ROWS = ['B','C','D','E','F','G','H','I','J','K'];
     let bookings = {};
     let isAdmin = false;
     let selectedSeat = null;
+    let db = null;
 
-    // రియల్ టైమ్‌లో డేటా మార్పులను వినడం (అందరి మొబైల్స్‌లో వెంటనే అప్‌డేట్ అవుతుంది)
-    db.ref('bookings').on('value', (snapshot) => {
-      bookings = snapshot.val() || {};
-      renderGrid();
-    });
+    // First render empty seat layout so seats show up immediately
+    renderGrid();
+
+    // Initialize Firebase
+    try {
+      const firebaseConfig = {
+        databaseURL: "https://seat-booking-default-rtdb.firebaseio.com"
+      };
+      if (!firebase.apps.length) {
+        firebase.initializeApp(firebaseConfig);
+      }
+      db = firebase.database();
+
+      // Listen for real-time updates
+      db.ref('bookings').on('value', (snapshot) => {
+        bookings = snapshot.val() || {};
+        renderGrid();
+      });
+    } catch (err) {
+      console.log("Firebase error:", err);
+    }
 
     function renderGrid() {
       const grid = document.getElementById('seatGrid');
@@ -133,19 +138,29 @@
       const phone = document.getElementById('studentPhone').value.trim();
       if (!name) return alert("Please enter name");
 
-      // లైవ్ డేటాబేస్‌కి పంపడం
-      db.ref('bookings/' + selectedSeat).set({ name, phone }, (error) => {
-        if (error) alert("Error saving booking");
-        else closeModal();
-      });
+      if (db) {
+        db.ref('bookings/' + selectedSeat).set({ name, phone }, (error) => {
+          if (error) alert("Error saving booking");
+          else closeModal();
+        });
+      } else {
+        bookings[selectedSeat] = { name, phone };
+        renderGrid();
+        closeModal();
+      }
     }
 
     function deleteBooking() {
-      // లైవ్ డేటాబేస్ నుండి తొలగించడం
-      db.ref('bookings/' + selectedSeat).remove((error) => {
-        if (error) alert("Error deleting booking");
-        else closeModal();
-      });
+      if (db) {
+        db.ref('bookings/' + selectedSeat).remove((error) => {
+          if (error) alert("Error deleting booking");
+          else closeModal();
+        });
+      } else {
+        delete bookings[selectedSeat];
+        renderGrid();
+        closeModal();
+      }
     }
 
     function closeModal() {
